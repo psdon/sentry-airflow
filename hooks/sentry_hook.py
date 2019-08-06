@@ -1,12 +1,13 @@
+import os
+
 from airflow import configuration
 from airflow.exceptions import AirflowException
 from airflow.hooks.base_hook import BaseHook
 from airflow.models import TaskInstance
 from airflow.utils.db import provide_session
-
 from sentry_sdk import configure_scope, add_breadcrumb, init
-from sentry_sdk.integrations.logging import ignore_logger
 from sentry_sdk.integrations.flask import FlaskIntegration
+from sentry_sdk.integrations.logging import ignore_logger
 from sqlalchemy import exc
 
 SCOPE_TAGS = frozenset(("task_id", "dag_id", "execution_date", "operator"))
@@ -22,12 +23,12 @@ def get_task_instance(task, execution_date, session=None):
     TI = TaskInstance
     ti = (
         session.query(TI)
-        .filter(
+            .filter(
             TI.dag_id == task.dag_id,
             TI.task_id == task.task_id,
             TI.execution_date == execution_date,
         )
-        .first()
+            .first()
     )
     return ti
 
@@ -54,7 +55,7 @@ def add_sentry(self, *args, **kwargs):
             add_breadcrumb(
                 category="upstream_tasks",
                 message="Upstream Task: {ti.dag_id}.{ti.task_id}, "
-                "Execution: {ti.execution_date}, State:[{ti.state}], Operation: {operator}".format(
+                        "Execution: {ti.execution_date}, State:[{ti.state}], Operation: {operator}".format(
                     ti=task_instance, operator=operator
                 ),
                 level="info",
@@ -98,9 +99,12 @@ class SentryHook(BaseHook):
         try:
             if sentry_conn_id is None:
                 self.conn_id = self.get_connection("sentry_dsn")
+
             else:
                 self.conn_id = self.get_connection(sentry_conn_id)
+
             self.dsn = self.conn_id.host
+            # self.log.warning(f"dsn = {self.dsn}") # Debug
             init(dsn=self.dsn, integrations=integrations)
         except (AirflowException, exc.OperationalError):
             self.log.warning(
