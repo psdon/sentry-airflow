@@ -98,7 +98,6 @@ class SentryHook(BaseHook):
 
         try:
             if not self.dsn:
-                self.log.warning("@NO DSN")
                 if sentry_conn_id is None:
                     self.conn_id = self.get_connection("sentry_dsn")
 
