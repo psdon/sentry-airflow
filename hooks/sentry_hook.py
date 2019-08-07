@@ -70,7 +70,7 @@ class SentryHook(BaseHook):
     Wrap around the Sentry SDK.
     """
 
-    def __init__(self, sentry_conn_id=None):
+    def __init__(self, sentry_dsn=None, sentry_conn_id=None):
         integrations = []
         ignore_logger("airflow.task")
         executor_name = configuration.conf.get("core", "EXECUTOR")
@@ -94,16 +94,18 @@ class SentryHook(BaseHook):
         integrations.append(sentry_flask)
 
         self.conn_id = None
-        self.dsn = None
+        self.dsn = sentry_dsn
 
         try:
-            if sentry_conn_id is None:
-                self.conn_id = self.get_connection("sentry_dsn")
+            if not self.dsn:
+                self.log.warning("@NO DSN")
+                if sentry_conn_id is None:
+                    self.conn_id = self.get_connection("sentry_dsn")
 
-            else:
-                self.conn_id = self.get_connection(sentry_conn_id)
+                else:
+                    self.conn_id = self.get_connection(sentry_conn_id)
 
-            self.dsn = self.conn_id.host
+                self.dsn = self.conn_id.host
             # self.log.warning(f"dsn = {self.dsn}") # Debug
             init(dsn=self.dsn, integrations=integrations)
         except (AirflowException, exc.OperationalError):
@@ -118,4 +120,5 @@ class SentryHook(BaseHook):
 
 if not getattr(TaskInstance, "_sentry_integration_", False):
     original_task_init = TaskInstance.__init__
-    SentryHook()
+    dsn = os.environ.get("SENTRY_DSN")
+    SentryHook(sentry_dsn=dsn)
